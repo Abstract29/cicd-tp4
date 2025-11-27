@@ -1,0 +1,62 @@
+name: CI - Tests avec Allure et Monitoring
+on:
+    push:
+        branches:
+        - main
+        - develop
+    pull_request:
+        branches:
+        - main
+    schedule:
+      - cron: 0 */6 * * *
+jobs:
+  test-and-report:
+    name: Tests & Allure Report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Deps
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Allure CLI
+        run: |
+          npm install -g allure-commandline
+          allure --version
+
+      - name: Run Tests with Allure
+        run: "pytest tests/ -v --alluredir=reports"
+        continue-on-error: true
+
+      - name: Generate Allure Report
+        if: always()
+        run: "allure generate reports --clean -o allure-report"
+
+      - name: Upload Allure Artifact (JSON)
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'allure-results'
+          path: reports/
+          retention-days: 30
+
+      - name: Upload Allure Artifact (HTML)
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-html-report
+          path: allure-report/
+          retention-days: 30
+
